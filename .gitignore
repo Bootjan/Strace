@@ -1,0 +1,6 @@
+**/objs/
+**/*.a
+./ft_strace
+output
+test.c
+.vscode
