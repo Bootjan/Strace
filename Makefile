@@ -1,5 +1,5 @@
 CC = cc
-C_FLAGS = -Wall -Wextra -Werror -Wpedantic
+CFLAGS = -Wall -Wextra -Werror -Wpedantic
 
 ifeq ($(shell uname -s), Linux)
 	CFLAGS +=-fsanitize=leak
@@ -16,8 +16,18 @@ endif
 NAME = ft_strace
 
 SRC_DIR = src
+C_FLAG_DIR = c_flag
+PATH_MANAGEMENT_DIR = path_management
+TRACER_DIR = tracer
+SIGNALS_DIR = signals
+GET_SYSCALL_DIR = get_syscall_signal
 
-SRC :=	$(wildcard $(SRC_DIR)/*.c)
+SRC :=	$(wildcard $(SRC_DIR)/*.c) \
+		$(wildcard $(SRC_DIR)/$(C_FLAG_DIR)/*.c) \
+		$(wildcard $(SRC_DIR)/$(PATH_MANAGEMENT_DIR)/*.c) \
+		$(wildcard $(SRC_DIR)/$(TRACER_DIR)/*.c) \
+		$(wildcard $(SRC_DIR)/$(SIGNALS_DIR)/*.c) \
+		$(wildcard $(SRC_DIR)/$(GET_SYSCALL_DIR)/*.c)
 
 OBJS_DIR = objs
 OBJ = $(SRC:$(SRC_DIR)/%.c=$(OBJS_DIR)/%.o)
@@ -25,19 +35,11 @@ OBJ = $(SRC:$(SRC_DIR)/%.c=$(OBJS_DIR)/%.o)
 I_DIRS := $(shell find . -type f -name "*.h" -exec dirname {} + | uniq)
 INCLUDE = $(I_DIRS:%=-I%)
 
-INCL_LIB = -L./$(PRINTF_DIR) -lftprintf
-
-PRINTF_DIR = ft_printf
-PRINTF = $(PRINTF_DIR)/libftprintf.a
-
 all: $(NAME)
 .PHONY: all
 
-$(NAME): $(PRINTF) $(OBJS_DIR) $(OBJ)
-	$(CC) $(C_FLAGS) -o $(NAME) $(OBJ) $(LDFLAGS) $(INCL_LIB)
-
-$(PRINTF):
-	make -C ft_printf
+$(NAME): $(OBJS_DIR) $(OBJ)
+	$(CC) $(C_FLAGS) -o $(NAME) $(OBJ) $(LDFLAGS)
 
 $(OBJS_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(shell dirname $@)
@@ -48,13 +50,11 @@ $(OBJS_DIR):
 
 clean:
 	rm -rf $(OBJ)
-	make -C $(PRINTF_DIR) clean
 .PHONY: clean
 
 fclean: clean
 	rm -rf $(NAME)
 	rm -rf $(OBJS_DIR)
-	make -C $(PRINTF_DIR) fclean
 .PHONY: fclean
 
 re: fclean all

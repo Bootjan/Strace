@@ -1,6 +1,3 @@
-**/objs/
-**/*.a
-./ft_strace
-output
-test.c
-.vscode
+**/objs
+ft_strace
+binaries/

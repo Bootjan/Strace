@@ -2,14 +2,10 @@
 
 void	quit_program(strace_t* strace, const char* message, u_int8_t exit_status)
 {
-	if (exit_status == EXIT_FAILURE)
-		printf("Error: %s\n", message);
-	if (strace->pid > 0)
-		kill(strace->pid, SIGKILL);
+	if (exit_status == EXIT_FAILURE && message)
+		fprintf(stderr, "%s\n", message);
 	if (strace->cmd_path)
 		free(strace->cmd_path);
-	if (strace->args)
-		free(strace->args);
 	exit(exit_status);
 }
 
@@ -24,60 +20,45 @@ char*	compute_path_to_command(strace_t* strace, const char* av, char* const* env
 {
 	const char*	path_envvar = find_path_envvar(envp);
 	if (!path_envvar)
-		quit_program(strace, " couldn't find PATH environment variable", EXIT_FAILURE);
-	char**		split_paths = split_str(path_envvar, ':');
+		quit_program(strace, "Error: couldn't find PATH environment variable", EXIT_FAILURE);
+	char**		split_paths = split_str(&path_envvar[5], ':');
 	if (!split_paths)
-		quit_program(strace, " failed to split PATH environment variable", EXIT_FAILURE);
+		quit_program(strace, "Error: failed to split PATH environment variable", EXIT_FAILURE);
 	char*		cmd_path = find_path_of_cmd(av, (const char**)split_paths);
 	free_string_array(split_paths);
 	if (!cmd_path)
-		quit_program(strace, " failed to build path to command", EXIT_FAILURE);
+		quit_program(strace, "Error: failed to build path to command", EXIT_FAILURE);
 	return (cmd_path);
 }
 
-void	tracee(strace_t* strace, char* const* envp)
+void	tracee(strace_t* strace, char* const* av, char* const* envp)
 {
-	execve(strace->cmd_path, strace->args, envp);
+	execve(strace->cmd_path, av, envp);
 	if (strace->cmd_path)
 		free(strace->cmd_path);
-	if (strace->args)
-		free(strace->args);
 	exit(EXIT_FAILURE);
-}
-
-char**	compute_args_for_command(strace_t* strace, char* const* av)
-{
-	size_t	length = 0;
-
-	for (; av[length]; length++)
-		;
-	char**	args = malloc((length + 3) * sizeof(char *));
-	if (!args)
-		quit_program(strace, " malloc failed", EXIT_FAILURE);
-	for (length = 0; av[length]; length++)
-		args[length] = av[length];
-
-	args[length++] = STDOUT_REDIRECTION;
-	args[length++] = STDERR_REDIRECTION;
-	args[length] = NULL;
-	return (args);
 }
 
 int	main(int ac, char* const* av, char* const* envp)
 {
-	strace_t	strace = (strace_t){ 0, NULL, NULL, 0, 0, {0, 0, 0, 0, 0} };
+	strace_t	strace = (strace_t){ 0, NULL, _64BIT_PROC, 0, 0, {0, 0, 0, 0, 0, 0}, 0, NULL };
 
 	if (ac < 2)
-		quit_program(&strace, "ft_strace expects at least 1 argument", EXIT_FAILURE);
+		quit_program(&strace, "Error: ft_strace expects at least 1 argument", EXIT_FAILURE);
+	if (ac > 2 && strncmp(av[1], "-c", 3) == 0)
+	{
+		strace.flags |= PTRACE_C_FLAG;
+		av = &(av[1]);
+	}
+	
 	strace.cmd_path = compute_path_to_command(&strace, av[1], envp);
-	// strace.args = compute_args_for_command(&strace, &av[1]);
 
 	if ((strace.pid = fork()) == -1)
-		quit_program(&strace, " fork command failed", EXIT_FAILURE);
+		quit_program(&strace, "Error: fork command failed", EXIT_FAILURE);
 	if (strace.pid > 0)
 		tracer(&strace);
 	else
-		tracee(&strace, envp);
+		tracee(&strace, &(av[1]), envp);
 
-	quit_program(&strace, "", EXIT_SUCCESS);
+	quit_program(&strace, NULL, EXIT_SUCCESS);
 }
