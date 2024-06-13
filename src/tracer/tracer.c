@@ -7,10 +7,10 @@ int	do_first_half_of_cycle(strace_t* strace, struct iovec* data, int* status)
 	int	ret = retrieve_info_from_tracee(strace, data, status, true);
 	if (received_ending_sig_g == true)
 		return (TRACER_RECEIVED_SIG);
+	if (*status & (1 << 9) || ret == TRACEE_EXITED)
+		return (TRACEE_EXITED);
 	if (ret == TRACEE_RECEIVED_SIG)
 		return (TRACEE_RECEIVED_SIG);
-	if (*status & (1 << 9) || ret != TRACEE_RUNNING)
-		return (TRACEE_EXITED);
 
 	set_64_32_bit_flag(strace, data->iov_len);
 	set_tracee_registers(strace, data);
@@ -36,9 +36,7 @@ int	do_second_half_of_cycle(strace_t* strace, struct iovec* data, int* status)
 int	do_syscall_cycle(strace_t* strace, struct iovec* data, int* status)
 {
 	int	ret = do_first_half_of_cycle(strace, data, status);
-	if (ret == TRACER_RECEIVED_SIG)
-		return (TRACER_RECEIVED_SIG);
-	if (ret == TRACEE_EXITED)
+	if (ret == TRACEE_EXITED || ret == TRACER_RECEIVED_SIG)
 		return (TRACEE_EXITED);
 	if (ret == TRACEE_RECEIVED_SIG)
 		return (TRACEE_RUNNING);
